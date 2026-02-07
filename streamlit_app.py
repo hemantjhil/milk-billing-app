@@ -668,11 +668,21 @@ def render_lists_tab():
     )
 
     with deliveries_tab:
-        filter_date = st.date_input("Filter Date", value=to_date(db.today_str()), key="list_deliveries_date")
-        show_all = st.checkbox("Show all deliveries", value=False, key="list_deliveries_all")
-        rows = rows_to_dicts(
-            db.list_daily_deliveries(None if show_all else date_to_str(filter_date))
+        default_date = to_date(db.today_str())
+        date_range = st.date_input(
+            "Filter Date Range",
+            value=(default_date, default_date),
+            key="list_deliveries_date_range",
         )
+        show_all = st.checkbox("Show all deliveries", value=False, key="list_deliveries_all")
+        rows = rows_to_dicts(db.list_daily_deliveries())
+        if not show_all and isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+            rows = [
+                row
+                for row in rows
+                if date_to_str(start_date) <= row["date"] <= date_to_str(end_date)
+            ]
         display_rows = [
             {
                 "date": row["date"],
@@ -698,11 +708,21 @@ def render_lists_tab():
         )
 
     with payments_tab:
-        filter_date = st.date_input("Filter Date", value=to_date(db.today_str()), key="list_payments_date")
-        show_all = st.checkbox("Show all payments", value=False, key="list_payments_all")
-        rows = rows_to_dicts(
-            db.list_advance_payments(None if show_all else date_to_str(filter_date))
+        default_date = to_date(db.today_str())
+        date_range = st.date_input(
+            "Filter Date Range",
+            value=(default_date, default_date),
+            key="list_payments_date_range",
         )
+        show_all = st.checkbox("Show all payments", value=False, key="list_payments_all")
+        rows = rows_to_dicts(db.list_advance_payments())
+        if not show_all and isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+            rows = [
+                row
+                for row in rows
+                if date_to_str(start_date) <= row["date"] <= date_to_str(end_date)
+            ]
         display_rows = [
             {
                 "date": row["date"],
@@ -724,11 +744,21 @@ def render_lists_tab():
         )
 
     with allocations_tab:
-        filter_date = st.date_input("Filter Date", value=to_date(db.today_str()), key="list_allocations_date")
-        show_all = st.checkbox("Show all allocations", value=False, key="list_allocations_all")
-        rows = rows_to_dicts(
-            db.list_partner_allocations_all(None if show_all else date_to_str(filter_date))
+        default_date = to_date(db.today_str())
+        date_range = st.date_input(
+            "Filter Date Range",
+            value=(default_date, default_date),
+            key="list_allocations_date_range",
         )
+        show_all = st.checkbox("Show all allocations", value=False, key="list_allocations_all")
+        rows = rows_to_dicts(db.list_partner_allocations_all())
+        if not show_all and isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+            rows = [
+                row
+                for row in rows
+                if date_to_str(start_date) <= row["date"] <= date_to_str(end_date)
+            ]
         display_rows = [
             {
                 "date": row["date"],
