@@ -103,7 +103,7 @@ def enforce_login():
             st.success("Logged in.")
             st.rerun()
         else:
-            st.error("Invalid password.")
+            st.error("Invalid username or password.")
     return False
 
 

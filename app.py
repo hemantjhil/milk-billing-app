@@ -9,6 +9,9 @@ import tkinter.font as tkfont
 import webbrowser
 from tkinter import ttk, messagebox, filedialog
 
+DEFAULT_USERNAME = "admin"
+DEFAULT_PASSWORD = "admin123"
+
 import db
 from reports import generate_customer_receipt
 from tkcalendar import DateEntry
@@ -347,21 +350,27 @@ class MilkBillingApp(tk.Tk):
         ttk.Label(parent, text="Shop Name").grid(row=0, column=0, sticky="w")
         ttk.Label(parent, text="Shop Address").grid(row=1, column=0, sticky="w")
         ttk.Label(parent, text="Shop Contact").grid(row=2, column=0, sticky="w")
-        ttk.Label(parent, text="New Password").grid(row=3, column=0, sticky="w")
-        ttk.Label(parent, text="Confirm Password").grid(row=4, column=0, sticky="w")
+        ttk.Label(parent, text="Username").grid(row=3, column=0, sticky="w")
+        ttk.Label(parent, text="New Password").grid(row=4, column=0, sticky="w")
+        ttk.Label(parent, text="Confirm Password").grid(row=5, column=0, sticky="w")
         self.shop_name_entry = ttk.Entry(parent, width=40)
         self.shop_name_entry.insert(0, self.shop_name)
         self.shop_address_entry = ttk.Entry(parent, width=40)
         self.shop_address_entry.insert(0, self.shop_address)
         self.shop_contact_entry = ttk.Entry(parent, width=40)
         self.shop_contact_entry.insert(0, self.shop_contact)
+        self.app_username_entry = ttk.Entry(parent, width=40)
+        self.app_username_entry.insert(
+            0, db.get_setting("app_username", DEFAULT_USERNAME)
+        )
         self.app_password_entry = ttk.Entry(parent, width=40, show="*")
         self.app_password_confirm_entry = ttk.Entry(parent, width=40, show="*")
         self.shop_name_entry.grid(row=0, column=1, padx=5, pady=6, sticky="w")
         self.shop_address_entry.grid(row=1, column=1, padx=5, pady=6, sticky="w")
         self.shop_contact_entry.grid(row=2, column=1, padx=5, pady=6, sticky="w")
-        self.app_password_entry.grid(row=3, column=1, padx=5, pady=6, sticky="w")
-        self.app_password_confirm_entry.grid(row=4, column=1, padx=5, pady=6, sticky="w")
+        self.app_username_entry.grid(row=3, column=1, padx=5, pady=6, sticky="w")
+        self.app_password_entry.grid(row=4, column=1, padx=5, pady=6, sticky="w")
+        self.app_password_confirm_entry.grid(row=5, column=1, padx=5, pady=6, sticky="w")
         ttk.Button(
             parent,
             text="Save Shop Details",
@@ -369,13 +378,13 @@ class MilkBillingApp(tk.Tk):
             style="Primary.TButton",
             image=self.icons.get("settings"),
             compound="left",
-        ).grid(row=5, column=1, sticky="e", padx=5, pady=8)
+        ).grid(row=6, column=1, sticky="e", padx=5, pady=8)
         ttk.Button(
             parent,
             text="Remove App Password",
             command=self._clear_app_password,
             style="Secondary.TButton",
-        ).grid(row=5, column=0, sticky="w", padx=5, pady=8)
+        ).grid(row=6, column=0, sticky="w", padx=5, pady=8)
         parent.columnconfigure(0, weight=1)
         parent.columnconfigure(1, weight=1)
 
@@ -1722,6 +1731,7 @@ class MilkBillingApp(tk.Tk):
         name = self.shop_name_entry.get().strip()
         address = self.shop_address_entry.get().strip()
         contact = self.shop_contact_entry.get().strip()
+        username = self.app_username_entry.get().strip()
         new_password = self.app_password_entry.get()
         confirm_password = self.app_password_confirm_entry.get()
         if not name:
@@ -1732,6 +1742,8 @@ class MilkBillingApp(tk.Tk):
                 messagebox.showerror("Validation", "Passwords do not match.")
                 return
             db.set_setting("app_password_hash", self._hash_password(new_password))
+        if username:
+            db.set_setting("app_username", username)
         db.set_setting("shop_name", name)
         db.set_setting("shop_address", address)
         db.set_setting("shop_contact", contact)
@@ -1739,6 +1751,8 @@ class MilkBillingApp(tk.Tk):
         self.shop_address = address
         self.shop_contact = contact
         self.title(f"{self.shop_name} (Offline)")
+        self.app_username_entry.delete(0, tk.END)
+        self.app_username_entry.insert(0, db.get_setting("app_username", DEFAULT_USERNAME))
         self.app_password_entry.delete(0, tk.END)
         self.app_password_confirm_entry.delete(0, tk.END)
         messagebox.showinfo("Saved", "Shop details updated.")
@@ -1752,11 +1766,17 @@ class MilkBillingApp(tk.Tk):
     def _hash_password(self, raw_password):
         return hashlib.sha256(raw_password.encode("utf-8")).hexdigest()
 
-    def _verify_password(self, raw_password):
-        stored = db.get_setting("app_password_hash", "")
-        if not stored:
-            return True
-        return hmac.compare_digest(stored, self._hash_password(raw_password))
+    def _get_app_username(self):
+        return db.get_setting("app_username", DEFAULT_USERNAME)
+
+    def _verify_credentials(self, username, raw_password):
+        stored_hash = db.get_setting("app_password_hash", "")
+        stored_username = self._get_app_username()
+        if not stored_hash:
+            return username == DEFAULT_USERNAME and raw_password == DEFAULT_PASSWORD
+        if username != stored_username:
+            return False
+        return hmac.compare_digest(stored_hash, self._hash_password(raw_password))
 
     def _prompt_login(self):
         stored = db.get_setting("app_password_hash", "")
@@ -1768,22 +1788,27 @@ class MilkBillingApp(tk.Tk):
         dialog.transient(self)
         dialog.grab_set()
 
-        ttk.Label(dialog, text="Enter Password").grid(row=0, column=0, padx=10, pady=8)
+        ttk.Label(dialog, text="Username").grid(row=0, column=0, padx=10, pady=(8, 4))
+        username_entry = ttk.Entry(dialog, width=30)
+        username_entry.grid(row=1, column=0, padx=10, pady=4)
+        ttk.Label(dialog, text="Password").grid(row=2, column=0, padx=10, pady=(6, 4))
         password_entry = ttk.Entry(dialog, width=30, show="*")
-        password_entry.grid(row=1, column=0, padx=10, pady=6)
+        password_entry.grid(row=3, column=0, padx=10, pady=4)
 
         def attempt_login():
+            username = username_entry.get().strip()
             password = password_entry.get()
-            if self._verify_password(password):
+            if self._verify_credentials(username, password):
                 dialog.destroy()
             else:
                 messagebox.showerror("Login Failed", "Invalid password.")
                 password_entry.delete(0, tk.END)
 
         ttk.Button(dialog, text="Login", command=attempt_login).grid(
-            row=2, column=0, padx=10, pady=10
+            row=4, column=0, padx=10, pady=10
         )
         dialog.protocol("WM_DELETE_WINDOW", self.destroy)
+        username_entry.insert(0, self._get_app_username())
         password_entry.focus_set()
         self.wait_window(dialog)
 
