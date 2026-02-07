@@ -673,7 +673,29 @@ def render_lists_tab():
         rows = rows_to_dicts(
             db.list_daily_deliveries(None if show_all else date_to_str(filter_date))
         )
-        st.dataframe(rows, use_container_width=True)
+        display_rows = [
+            {
+                "date": row["date"],
+                "customer": row["customer_name"],
+                "item": row["item_name"],
+                "qty": row["quantity"],
+                "partner": row["partner_name"],
+                "manager": row["manager_name"],
+            }
+            for row in rows
+        ]
+        st.dataframe(
+            display_rows,
+            use_container_width=True,
+            column_config={
+                "date": st.column_config.TextColumn("Date", width="medium"),
+                "customer": st.column_config.TextColumn("Customer"),
+                "item": st.column_config.TextColumn("Item"),
+                "qty": st.column_config.NumberColumn("Qty"),
+                "partner": st.column_config.TextColumn("Partner"),
+                "manager": st.column_config.TextColumn("Manager"),
+            },
+        )
 
     with payments_tab:
         filter_date = st.date_input("Filter Date", value=to_date(db.today_str()), key="list_payments_date")
@@ -681,7 +703,25 @@ def render_lists_tab():
         rows = rows_to_dicts(
             db.list_advance_payments(None if show_all else date_to_str(filter_date))
         )
-        st.dataframe(rows, use_container_width=True)
+        display_rows = [
+            {
+                "date": row["date"],
+                "customer": row["customer_name"],
+                "amount": row["amount"],
+                "notes": row.get("notes") or "",
+            }
+            for row in rows
+        ]
+        st.dataframe(
+            display_rows,
+            use_container_width=True,
+            column_config={
+                "date": st.column_config.TextColumn("Date", width="medium"),
+                "customer": st.column_config.TextColumn("Customer"),
+                "amount": st.column_config.NumberColumn("Amount", format="₹%.2f"),
+                "notes": st.column_config.TextColumn("Notes"),
+            },
+        )
 
     with allocations_tab:
         filter_date = st.date_input("Filter Date", value=to_date(db.today_str()), key="list_allocations_date")
@@ -689,7 +729,27 @@ def render_lists_tab():
         rows = rows_to_dicts(
             db.list_partner_allocations_all(None if show_all else date_to_str(filter_date))
         )
-        st.dataframe(rows, use_container_width=True)
+        display_rows = [
+            {
+                "date": row["date"],
+                "partner": row["partner_name"],
+                "item": row["item_name"],
+                "qty": row["quantity"],
+                "manager": row["manager_name"],
+            }
+            for row in rows
+        ]
+        st.dataframe(
+            display_rows,
+            use_container_width=True,
+            column_config={
+                "date": st.column_config.TextColumn("Date", width="medium"),
+                "partner": st.column_config.TextColumn("Partner"),
+                "item": st.column_config.TextColumn("Item"),
+                "qty": st.column_config.NumberColumn("Qty"),
+                "manager": st.column_config.TextColumn("Manager"),
+            },
+        )
 
 
 def main():
