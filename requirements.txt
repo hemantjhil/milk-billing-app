@@ -1,0 +1,4 @@
+reportlab==4.2.0
+tkcalendar==1.6.1
+pillow==10.4.0
+streamlit==1.36.0
