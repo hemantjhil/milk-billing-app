@@ -582,7 +582,7 @@ def render_partner_stock_tab():
         partner = st.selectbox(
             "Partner", options=partners, format_func=fmt_name, key="summary_partner"
         )
-        if st.button("Load Summary"):
+        if st.button("Load Summary", key="partner_load_summary"):
             allocations = db.list_partner_allocations(partner["id"], date_to_str(summary_date))
             deliveries = db.list_partner_deliveries(partner["id"], date_to_str(summary_date))
             remaining = db.partner_remaining(partner["id"], date_to_str(summary_date))
@@ -617,7 +617,7 @@ def render_reports_tab():
         customer = st.selectbox("Customer", options=customers, format_func=fmt_name, key="report_customer")
         start_date = st.date_input("From Date", value=to_date(db.today_str()), key="report_from")
         end_date = st.date_input("To Date", value=to_date(db.today_str()), key="report_to")
-        if st.button("Load Summary"):
+        if st.button("Load Summary", key="report_load_summary"):
             total_qty, total_amount, total_paid = db.customer_summary_range(
                 customer["id"], date_to_str(start_date), date_to_str(end_date)
             )
@@ -635,7 +635,7 @@ def render_reports_tab():
             st.text("\n".join(lines))
 
         st.markdown("### Customer Receipt (PDF)")
-        if st.button("Generate Receipt PDF"):
+        if st.button("Generate Receipt PDF", key="report_generate_receipt"):
             deliveries, payments = db.customer_statement_range(
                 customer["id"], date_to_str(start_date), date_to_str(end_date)
             )
