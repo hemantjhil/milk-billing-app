@@ -1,4 +1,6 @@
 import calendar
+import hashlib
+import hmac
 import os
 import shutil
 import tempfile
@@ -24,6 +26,7 @@ class MilkBillingApp(tk.Tk):
         self.resizable(True, True)
         self._apply_styles()
         self._build_icons()
+        self._prompt_login()
         self._combo_sources = {}
         self._combo_value_to_id = {}
         self._combo_id_to_value = {}
@@ -344,15 +347,21 @@ class MilkBillingApp(tk.Tk):
         ttk.Label(parent, text="Shop Name").grid(row=0, column=0, sticky="w")
         ttk.Label(parent, text="Shop Address").grid(row=1, column=0, sticky="w")
         ttk.Label(parent, text="Shop Contact").grid(row=2, column=0, sticky="w")
+        ttk.Label(parent, text="New Password").grid(row=3, column=0, sticky="w")
+        ttk.Label(parent, text="Confirm Password").grid(row=4, column=0, sticky="w")
         self.shop_name_entry = ttk.Entry(parent, width=40)
         self.shop_name_entry.insert(0, self.shop_name)
         self.shop_address_entry = ttk.Entry(parent, width=40)
         self.shop_address_entry.insert(0, self.shop_address)
         self.shop_contact_entry = ttk.Entry(parent, width=40)
         self.shop_contact_entry.insert(0, self.shop_contact)
+        self.app_password_entry = ttk.Entry(parent, width=40, show="*")
+        self.app_password_confirm_entry = ttk.Entry(parent, width=40, show="*")
         self.shop_name_entry.grid(row=0, column=1, padx=5, pady=6, sticky="w")
         self.shop_address_entry.grid(row=1, column=1, padx=5, pady=6, sticky="w")
         self.shop_contact_entry.grid(row=2, column=1, padx=5, pady=6, sticky="w")
+        self.app_password_entry.grid(row=3, column=1, padx=5, pady=6, sticky="w")
+        self.app_password_confirm_entry.grid(row=4, column=1, padx=5, pady=6, sticky="w")
         ttk.Button(
             parent,
             text="Save Shop Details",
@@ -360,7 +369,13 @@ class MilkBillingApp(tk.Tk):
             style="Primary.TButton",
             image=self.icons.get("settings"),
             compound="left",
-        ).grid(row=3, column=1, sticky="e", padx=5, pady=8)
+        ).grid(row=5, column=1, sticky="e", padx=5, pady=8)
+        ttk.Button(
+            parent,
+            text="Remove App Password",
+            command=self._clear_app_password,
+            style="Secondary.TButton",
+        ).grid(row=5, column=0, sticky="w", padx=5, pady=8)
         parent.columnconfigure(0, weight=1)
         parent.columnconfigure(1, weight=1)
 
@@ -1707,9 +1722,16 @@ class MilkBillingApp(tk.Tk):
         name = self.shop_name_entry.get().strip()
         address = self.shop_address_entry.get().strip()
         contact = self.shop_contact_entry.get().strip()
+        new_password = self.app_password_entry.get()
+        confirm_password = self.app_password_confirm_entry.get()
         if not name:
             messagebox.showerror("Validation", "Shop name is required.")
             return
+        if new_password or confirm_password:
+            if new_password != confirm_password:
+                messagebox.showerror("Validation", "Passwords do not match.")
+                return
+            db.set_setting("app_password_hash", self._hash_password(new_password))
         db.set_setting("shop_name", name)
         db.set_setting("shop_address", address)
         db.set_setting("shop_contact", contact)
@@ -1717,7 +1739,53 @@ class MilkBillingApp(tk.Tk):
         self.shop_address = address
         self.shop_contact = contact
         self.title(f"{self.shop_name} (Offline)")
+        self.app_password_entry.delete(0, tk.END)
+        self.app_password_confirm_entry.delete(0, tk.END)
         messagebox.showinfo("Saved", "Shop details updated.")
+
+    def _clear_app_password(self):
+        if not messagebox.askyesno("Confirm", "Remove app password?"):
+            return
+        db.set_setting("app_password_hash", "")
+        messagebox.showinfo("Done", "App password removed.")
+
+    def _hash_password(self, raw_password):
+        return hashlib.sha256(raw_password.encode("utf-8")).hexdigest()
+
+    def _verify_password(self, raw_password):
+        stored = db.get_setting("app_password_hash", "")
+        if not stored:
+            return True
+        return hmac.compare_digest(stored, self._hash_password(raw_password))
+
+    def _prompt_login(self):
+        stored = db.get_setting("app_password_hash", "")
+        if not stored:
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title("Login")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+
+        ttk.Label(dialog, text="Enter Password").grid(row=0, column=0, padx=10, pady=8)
+        password_entry = ttk.Entry(dialog, width=30, show="*")
+        password_entry.grid(row=1, column=0, padx=10, pady=6)
+
+        def attempt_login():
+            password = password_entry.get()
+            if self._verify_password(password):
+                dialog.destroy()
+            else:
+                messagebox.showerror("Login Failed", "Invalid password.")
+                password_entry.delete(0, tk.END)
+
+        ttk.Button(dialog, text="Login", command=attempt_login).grid(
+            row=2, column=0, padx=10, pady=10
+        )
+        dialog.protocol("WM_DELETE_WINDOW", self.destroy)
+        password_entry.focus_set()
+        self.wait_window(dialog)
 
     def _get_month_days(self, year, month):
         _, days = calendar.monthrange(year, month)

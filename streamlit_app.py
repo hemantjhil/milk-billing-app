@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import os
 import tempfile
 from datetime import date
@@ -10,6 +12,8 @@ from reports import generate_customer_receipt
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB = os.path.join(APP_DIR, "milk_billing.db")
+DEFAULT_USERNAME = "admin"
+DEFAULT_PASSWORD = "admin123"
 
 
 def to_date(value):
@@ -51,7 +55,56 @@ def load_settings():
         "shop_name": db.get_setting("shop_name", "Milk Billing System"),
         "shop_address": db.get_setting("shop_address", ""),
         "shop_contact": db.get_setting("shop_contact", ""),
+        "app_username": db.get_setting("app_username", DEFAULT_USERNAME),
+        "app_password_hash": db.get_setting("app_password_hash", ""),
     }
+
+
+def hash_password(raw_password):
+    return hashlib.sha256(raw_password.encode("utf-8")).hexdigest()
+
+
+def get_username():
+    return db.get_setting("app_username", DEFAULT_USERNAME)
+
+
+def is_password_set():
+    return bool(db.get_setting("app_password_hash", ""))
+
+
+def verify_credentials(username, raw_password):
+    stored_hash = db.get_setting("app_password_hash", "")
+    stored_username = get_username()
+    if not stored_hash:
+        return (
+            username == DEFAULT_USERNAME
+            and raw_password == DEFAULT_PASSWORD
+        )
+    if username != stored_username:
+        return False
+    return hmac.compare_digest(stored_hash, hash_password(raw_password))
+
+
+def enforce_login():
+    if not is_password_set():
+        return True
+    if st.session_state.get("authenticated"):
+        return True
+
+    st.title("Milk Billing System")
+    st.info("Login required.")
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+    if submitted:
+        if verify_credentials(username, password):
+            st.session_state.authenticated = True
+            st.success("Logged in.")
+            st.rerun()
+        else:
+            st.error("Invalid password.")
+    return False
 
 
 def sidebar_data_access():
@@ -292,15 +345,34 @@ def render_masters_tab():
             shop_name = st.text_input("Shop Name", value=settings["shop_name"])
             shop_address = st.text_input("Shop Address", value=settings["shop_address"])
             shop_contact = st.text_input("Shop Contact", value=settings["shop_contact"])
+            st.markdown("#### App Login")
+            app_username = st.text_input("Username", value=settings["app_username"])
+            st.markdown("#### App Login Password")
+            new_password = st.text_input("New Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
             saved = st.form_submit_button("Save Settings")
         if saved:
             if not shop_name.strip():
                 st.error("Shop name is required.")
             else:
+                if new_password or confirm_password:
+                    if new_password != confirm_password:
+                        st.error("Passwords do not match.")
+                        return
+                    db.set_setting("app_password_hash", hash_password(new_password))
+                if app_username.strip():
+                    db.set_setting("app_username", app_username.strip())
                 db.set_setting("shop_name", shop_name.strip())
                 db.set_setting("shop_address", shop_address.strip())
                 db.set_setting("shop_contact", shop_contact.strip())
                 st.success("Settings saved.")
+                st.rerun()
+
+        if settings.get("app_password_hash"):
+            if st.button("Remove App Password"):
+                db.set_setting("app_password_hash", "")
+                st.session_state.authenticated = False
+                st.success("Password removed.")
                 st.rerun()
 
 
@@ -787,8 +859,17 @@ def main():
     sidebar_data_access()
     set_db_path(st.session_state.db_path)
 
+    if not enforce_login():
+        return
+
     st.title("Milk Billing System (Web & Mobile)")
     st.caption("Use this app from mobile by opening the Streamlit URL in your phone browser.")
+
+    if is_password_set():
+        if st.sidebar.button("Logout"):
+            st.session_state.authenticated = False
+            st.sidebar.success("Logged out.")
+            st.rerun()
 
     masters, daily, stock, reports, lists = st.tabs(
         ["Masters", "Daily Delivery", "Partner Stock", "Reports", "Lists"]
