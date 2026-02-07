@@ -1801,7 +1801,7 @@ class MilkBillingApp(tk.Tk):
             if self._verify_credentials(username, password):
                 dialog.destroy()
             else:
-                messagebox.showerror("Login Failed", "Invalid password.")
+                messagebox.showerror("Login Failed", "Invalid username or password.")
                 password_entry.delete(0, tk.END)
 
         ttk.Button(dialog, text="Login", command=attempt_login).grid(
