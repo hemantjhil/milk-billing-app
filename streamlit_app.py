@@ -198,7 +198,7 @@ def render_masters_tab():
                     st.success("Customer updated.")
                     st.rerun()
 
-            if st.button("Delete Customer"):
+            if st.button("Delete Customer", key="delete_customer"):
                 db.deactivate_customer(selection["id"])
                 st.success("Customer deleted.")
                 st.rerun()
@@ -245,7 +245,7 @@ def render_masters_tab():
                     st.success("Partner updated.")
                     st.rerun()
 
-            if st.button("Delete Partner"):
+            if st.button("Delete Partner", key="delete_partner"):
                 db.deactivate_delivery_partner(selection["id"])
                 st.success("Partner deleted.")
                 st.rerun()
@@ -290,7 +290,7 @@ def render_masters_tab():
                     st.success("Item updated.")
                     st.rerun()
 
-            if st.button("Delete Item"):
+            if st.button("Delete Item", key="delete_item"):
                 db.delete_item(selection["id"])
                 st.success("Item deleted.")
                 st.rerun()
@@ -333,7 +333,7 @@ def render_masters_tab():
                     st.success("Manager updated.")
                     st.rerun()
 
-            if st.button("Delete Manager"):
+            if st.button("Delete Manager", key="delete_manager"):
                 db.delete_manager(selection["id"])
                 st.success("Manager deleted.")
                 st.rerun()
@@ -369,7 +369,7 @@ def render_masters_tab():
                 st.rerun()
 
         if settings.get("app_password_hash"):
-            if st.button("Remove App Password"):
+            if st.button("Remove App Password", key="remove_app_password"):
                 db.set_setting("app_password_hash", "")
                 st.session_state.authenticated = False
                 st.success("Password removed.")
@@ -443,7 +443,10 @@ def render_daily_delivery_tab():
                 index=next((i for i, it in enumerate(items) if it["id"] == selection["item_id"]), 0),
             )
             quantity = st.number_input(
-                "Quantity", min_value=1, step=1, value=int(selection["quantity"])
+                "Quantity",
+                min_value=1,
+                step=1,
+                value=max(1, int(selection["quantity"])),
             )
             partner = st.selectbox(
                 "Delivery Partner",
@@ -478,7 +481,7 @@ def render_daily_delivery_tab():
             st.success("Delivery updated.")
             st.rerun()
 
-        if st.button("Delete Delivery"):
+        if st.button("Delete Delivery", key="delete_delivery"):
             db.delete_daily_delivery(selection["id"])
             st.success("Delivery deleted.")
             st.rerun()
@@ -546,7 +549,7 @@ def render_daily_delivery_tab():
             st.success("Payment updated.")
             st.rerun()
 
-        if st.button("Delete Payment"):
+        if st.button("Delete Payment", key="delete_payment"):
             db.delete_advance_payment(selection["id"])
             st.success("Payment deleted.")
             st.rerun()
@@ -625,7 +628,10 @@ def render_partner_stock_tab():
                 index=next((i for i, it in enumerate(items) if it["id"] == selection["item_id"]), 0),
             )
             quantity = st.number_input(
-                "Quantity", min_value=1, step=1, value=int(selection["quantity"])
+                "Quantity",
+                min_value=1,
+                step=1,
+                value=max(1, int(selection["quantity"])),
             )
             updated = st.form_submit_button("Update Allocation")
         if updated:
@@ -640,7 +646,7 @@ def render_partner_stock_tab():
             st.success("Allocation updated.")
             st.rerun()
 
-        if st.button("Delete Allocation"):
+        if st.button("Delete Allocation", key="delete_allocation"):
             db.delete_partner_allocation(selection["id"])
             st.success("Allocation deleted.")
             st.rerun()
