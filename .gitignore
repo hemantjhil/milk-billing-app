@@ -1,0 +1,8 @@
+*.db
+dist/milk_billing.db
+dist/MilkBillingSystem.exe
+dist/MilkBillingSystem.exe - Shortcut.lnk
+__pycache__/
+build/
+dist/
+uploaded/
